@@ -11,46 +11,44 @@ const LoginPage = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
-
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
+    if (!email) newErrors.email = 'Email is required';
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email format';
+    if (!password) newErrors.password = 'Password is required';
+    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!validate()) return;
 
     try {
       setLoading(true);
 
+      // 1️⃣ Login and get access token
       const res = await login({ email, password });
       const token = res.data.access_token;
       setToken(token);
 
+      // 2️⃣ Fetch user profile
       const profileRes = await getProfile();
-      setUser(profileRes.data);
+      const user = profileRes.data;
+      setUser(user);
 
-      toast.success('Welcome back!');
-      navigate('/');
+      toast.success(`Welcome back, ${user.firstName}!`);
+
+      // 3️⃣ Role-based redirect
+      if (user.role === 'ADMIN') {
+        navigate('/admin'); // redirect admin
+      } else {
+        navigate('/'); // normal user
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
@@ -61,20 +59,13 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 px-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        
         {/* Welcome Section */}
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Welcome Back 👋
-          </h1>
-          <p className="text-gray-500 mt-2">
-            Login to continue to your account
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800">Welcome Back 👋</h1>
+          <p className="text-gray-500 mt-2">Login to continue to your account</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-
-          {/* Email */}
           <div className="mb-4">
             <input
               type="email"
@@ -82,17 +73,12 @@ const LoginPage = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                errors.email
-                  ? 'border-red-400 focus:ring-red-300'
-                  : 'focus:ring-blue-400'
+                errors.email ? 'border-red-400 focus:ring-red-300' : 'focus:ring-blue-400'
               }`}
             />
-            {errors.email && (
-              <p className="text-red-500 text-sm mt-1">{errors.email}</p>
-            )}
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>
 
-          {/* Password */}
           <div className="mb-6">
             <input
               type="password"
@@ -100,17 +86,12 @@ const LoginPage = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                errors.password
-                  ? 'border-red-400 focus:ring-red-300'
-                  : 'focus:ring-blue-400'
+                errors.password ? 'border-red-400 focus:ring-red-300' : 'focus:ring-blue-400'
               }`}
             />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password}</p>
-            )}
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
 
-          {/* Login Button */}
           <button
             type="submit"
             disabled={loading}
@@ -120,14 +101,10 @@ const LoginPage = () => {
           </button>
         </form>
 
-        {/* Create Account Link */}
         <div className="text-center mt-6">
           <p className="text-gray-500 text-sm">
             Don’t have an account?{' '}
-            <Link
-              to="/register"
-              className="text-blue-600 font-semibold hover:underline"
-            >
+            <Link to="/register" className="text-blue-600 font-semibold hover:underline">
               Create Account
             </Link>
           </p>

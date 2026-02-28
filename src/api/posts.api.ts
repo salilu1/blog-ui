@@ -1,5 +1,8 @@
-// frontend: posts.api.ts
-import { api } from './axios';
+// src/api/posts.api.ts
+import {api} from './axios';
 
-export const getPosts = () => api.get('/posts'); // calls NestJS
-export const likePost = (postId: string) => api.post(`/likes/${postId}`);
+// Fetch all posts
+export const getPosts = () => api.get('/posts');
+
+// ✅ Fetch single post by ID
+export const getPostById = (postId: string) => api.get(`/posts/${postId}`);

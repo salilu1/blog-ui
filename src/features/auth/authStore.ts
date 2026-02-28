@@ -1,10 +1,19 @@
 import { create } from 'zustand';
 
+export type UserRole = 'ADMIN' | 'USER';
+
+export interface User {
+  id: string;
+  firstName: string;
+  email: string;
+  role: UserRole;
+}
+
 interface AuthState {
   token: string | null;
-  user: any | null;
-  setToken: (token: string | null) => void;   // ✅ allow null
-  setUser: (user: any | null) => void;       // ✅ allow null
+  user: User | null;
+  setToken: (token: string | null) => void;
+  setUser: (user: User | null) => void;
   logout: () => void;
 }
 

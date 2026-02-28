@@ -26,7 +26,7 @@ const PostCard = ({ post }: PostCardProps) => {
     setLoading(true);
     try {
       await toggleLike(post.id);
-      queryClient.invalidateQueries({ queryKey: ['posts'] }); // ✅ TS fix
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
     } catch (err) {
       toast.error('Something went wrong');
     } finally {
@@ -36,14 +36,18 @@ const PostCard = ({ post }: PostCardProps) => {
 
   const handleSeeMore = () => navigate(`/posts/${post.id}`);
 
-  const contentPreview =
-    post.content.length > 100
-      ? post.content.substring(0, 100) + '...'
-      : post.content;
+  // Preview first 50 words
+  const words = post.content.split(' ');
+  const contentPreview = words.length > 50 ? words.slice(0, 50).join(' ') + '...' : post.content;
+  const hasMore = words.length > 50;
+
+  // Count root comments
+  const rootCommentsCount = post.comments.filter((c: any) => !c.parentId).length;
 
   return (
     <div className="bg-white p-6 rounded-xl shadow mb-6">
       <h2 className="text-xl font-semibold mb-2">{post.title}</h2>
+
       <p className="text-gray-700 mb-4">{contentPreview}</p>
 
       <div className="flex justify-between items-center text-sm text-gray-500 mb-2">
@@ -53,8 +57,8 @@ const PostCard = ({ post }: PostCardProps) => {
         <button
           onClick={handleLike}
           disabled={loading}
-          className={`font-semibold ${
-            likedByUser ? 'text-red-500' : 'text-gray-400'
+          className={`font-semibold transition-colors ${
+            likedByUser ? 'text-red-500' : 'text-gray-400 hover:text-red-400'
           }`}
         >
           ❤️ {post.likes.length}
@@ -62,8 +66,8 @@ const PostCard = ({ post }: PostCardProps) => {
       </div>
 
       <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>{post.comments.length} comments</span>
-        {post.content.length > 100 && (
+        <span>💬 {rootCommentsCount} comments</span>
+        {hasMore && (
           <button
             onClick={handleSeeMore}
             className="text-blue-600 hover:underline"
