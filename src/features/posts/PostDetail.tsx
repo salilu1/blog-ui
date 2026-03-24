@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../auth/authStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,20 +37,49 @@ const PostDetail = () => {
   const [page, setPage] = useState(1);
   const [commentContent, setCommentContent] = useState('');
 
+  // --- Fetch post
   const { data: post, isLoading, isError } = useQuery<Post>({
     queryKey: ['post', id],
     queryFn: async () => {
       const res = await getPostById(id!);
+      console.log("Post detail", res.data);
       return res.data;
     },
     enabled: !!id,
   });
 
+  // --- Hooks must be called unconditionally
+  const nestedComments = useMemo<CommentType[]>(() => {
+    if (!post?.comments) return [];
+    const map = new Map<string, CommentType>();
+    const roots: CommentType[] = [];
+
+    post.comments.forEach((c) => map.set(c.id, { ...c, replies: [] }));
+
+    post.comments.forEach((c) => {
+      const node = map.get(c.id)!;
+      if (c.parentId) {
+        const parent = map.get(c.parentId);
+        if (parent) parent.replies.push(node);
+        else roots.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    return roots;
+  }, [post?.comments]);
+
+  // --- Pagination
+  const paginatedComments = nestedComments.slice(0, page * COMMENTS_PER_PAGE);
+
+  // --- Post like mutation
   const likeMutation = useMutation({
     mutationFn: () => toggleLike(post!.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['post', id] }),
   });
 
+  // --- Root comment mutation
   const commentMutation = useMutation({
     mutationFn: (content: string) => createComment(post!.id, content),
     onSuccess: () => {
@@ -64,8 +93,6 @@ const PostDetail = () => {
   if (isError || !post) return <div className="text-center mt-10">Post not found</div>;
 
   const likedByUser = post.likes.some((like) => like.userId === user?.id);
-  const rootComments = post.comments.filter((c) => !c.parentId);
-  const paginatedComments = rootComments.slice(0, page * COMMENTS_PER_PAGE);
 
   return (
     <div className="max-w-3xl mx-auto p-6 bg-white shadow-sm mt-10 rounded-xl border">
@@ -90,6 +117,7 @@ const PostDetail = () => {
 
       <hr className="mb-8 border-gray-100" />
 
+      {/* Comments Section */}
       <section>
         <h2 className="text-xl font-bold mb-6">Comments</h2>
 
@@ -99,7 +127,13 @@ const PostDetail = () => {
               content={commentContent}
               setContent={setCommentContent}
               isLoading={commentMutation.isPending}
-              onSubmit={() => commentMutation.mutate(commentContent)}
+              onSubmit={() => {
+                if (!commentContent.trim()) {
+                  toast.error('Comment cannot be empty');
+                  return;
+                }
+                commentMutation.mutate(commentContent);
+              }}
             />
           </div>
         ) : (
@@ -112,7 +146,7 @@ const PostDetail = () => {
           ))}
         </div>
 
-        {paginatedComments.length < rootComments.length && (
+        {paginatedComments.length < nestedComments.length && (
           <button
             className="mt-8 w-full py-2 text-blue-600 font-medium hover:bg-blue-50 rounded-lg transition"
             onClick={() => setPage((p) => p + 1)}

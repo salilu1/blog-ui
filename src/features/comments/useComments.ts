@@ -23,7 +23,7 @@ export interface Comment {
   likes?: { userId: string }[];
   createdAt: string;
   updatedAt?: string;
-  replies?: Comment[];
+  replies: Comment[];
 }
 
 interface AddCommentParams {
@@ -32,106 +32,88 @@ interface AddCommentParams {
 }
 
 /** =========================
- * HELPER: Build nested comment tree
- ========================== */
-const buildCommentTree = (comments: Comment[]): Comment[] => {
-  const map: Record<string, Comment> = {};
-  const roots: Comment[] = [];
-
-  comments.forEach((c) => {
-    map[c.id] = { ...c, replies: [] };
-  });
-
-  comments.forEach((c) => {
-    if (c.parentId) {
-      const parent = map[c.parentId];
-      if (parent) parent.replies!.push(map[c.id]);
-    } else {
-      roots.push(map[c.id]);
-    }
-  });
-
-  return roots;
-};
-
-/** =========================
  * HOOK
  ========================== */
 export const useComments = (postId: string) => {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
 
-  // Fetch all comments and build nested structure
-  const commentsQuery = useQuery<Comment[]>({
-    queryKey: ['comments', postId],
-    queryFn: async () => {
-      const res = await getCommentsByPost(postId);
-      return buildCommentTree(res.data);
-    },
-    enabled: !!postId,
-  });
-
-  // Add comment or reply
+  /** =========================
+   * CREATE COMMENT / REPLY
+   ========================== */
   const addComment = useMutation<AxiosResponse, Error, AddCommentParams>({
     mutationFn: ({ content, parentId }) =>
       createCommentApi(postId, content, parentId),
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+      // Invalidate the post query so the new comment appears
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
     },
   });
 
-  // Like/unlike comment (optimistic update)
+  /** =========================
+   * LIKE COMMENT (OPTIMISTIC 🔥)
+   ========================== */
   const likeComment = useMutation<
     AxiosResponse,
     Error,
     string,
-    { previous?: Comment[] }
+    { previousPost?: any }
   >({
     mutationFn: (commentId) => toggleLikeComment(commentId),
+
     onMutate: async (commentId) => {
-      await queryClient.cancelQueries({ queryKey: ['comments', postId] });
-      const previous = queryClient.getQueryData<Comment[]>(['comments', postId]);
+      const queryKey = ['post', postId];
 
-      queryClient.setQueryData<Comment[]>(['comments', postId], (old) => {
-        if (!old) return old;
+      // 1. Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey });
 
-        const updateLikes = (comments: Comment[]): Comment[] =>
-          comments.map((c) => {
+      // 2. Snapshot the previous value
+      const previousPost = queryClient.getQueryData<any>(queryKey);
+
+      // 3. Optimistically update the 'post' cache
+      if (previousPost) {
+        queryClient.setQueryData<any>(queryKey, (old: { comments: any[]; }) => {
+          if (!old || !old.comments) return old;
+
+          // We update the FLAT comments array inside the post object.
+          // PostDetail's useMemo will automatically rebuild the tree with the new like.
+          const updatedComments = old.comments.map((c: any) => {
             if (c.id === commentId) {
-              const liked = c.likes?.some((l) => l.userId === user?.id);
+              const currentLikes = c.likes ?? [];
+              const alreadyLiked = currentLikes.some((l: any) => l.userId === user?.id);
+
               return {
                 ...c,
-                likes: liked
-                  ? (c.likes || []).filter((l) => l.userId !== user?.id)
-                  : [...(c.likes || []), { userId: user?.id! }],
+                likes: alreadyLiked
+                  ? currentLikes.filter((l: any) => l.userId !== user?.id)
+                  : [...currentLikes, { userId: user?.id }],
               };
-            }
-
-            if (c.replies?.length) {
-              return { ...c, replies: updateLikes(c.replies) };
             }
             return c;
           });
 
-        return updateLikes(old);
-      });
+          return { ...old, comments: updatedComments };
+        });
+      }
 
-      return { previous };
+      return { previousPost };
     },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) {
-        queryClient.setQueryData(['comments', postId], context.previous);
+
+    // 4. If the mutation fails, use the context returned from onMutate to roll back
+    onError: (err, newTodo, context) => {
+      if (context?.previousPost) {
+        queryClient.setQueryData(['post', postId], context.previousPost);
       }
     },
+
+    // 5. Always refetch after error or success to keep server in sync
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['comments', postId] });
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
     },
   });
 
   return {
-    comments: commentsQuery.data || [],
-    isLoading: commentsQuery.isLoading,
-    isError: commentsQuery.isError,
     addComment,
     likeComment,
   };
