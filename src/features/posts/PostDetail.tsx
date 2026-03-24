@@ -9,21 +9,12 @@ import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import CommentItem from '../comments/CommentItem';
 import CommentForm from '../comments/CommentForm';
+import type { Comment as CommentType } from '../comments/useComments';
 
-// --- Shared Interfaces ---
-export interface User {
+interface User {
   id: string;
   firstName: string;
   lastName: string;
-}
-
-export interface Comment {
-  id: string;
-  content: string;
-  parentId: string | null;
-  author?: User;
-  createdAt: string;
-  replies?: Comment[];
 }
 
 interface Post {
@@ -33,7 +24,7 @@ interface Post {
   createdAt: string;
   author?: User;
   likes: { userId: string }[];
-  comments: Comment[];
+  comments: CommentType[];
 }
 
 const COMMENTS_PER_PAGE = 6;
@@ -50,7 +41,7 @@ const PostDetail = () => {
     queryKey: ['post', id],
     queryFn: async () => {
       const res = await getPostById(id!);
-      return res.data; // Unwrapping Axios response
+      return res.data;
     },
     enabled: !!id,
   });
@@ -101,7 +92,7 @@ const PostDetail = () => {
 
       <section>
         <h2 className="text-xl font-bold mb-6">Comments</h2>
-        
+
         {user ? (
           <div className="mb-10">
             <CommentForm

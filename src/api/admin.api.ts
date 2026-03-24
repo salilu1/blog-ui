@@ -1,15 +1,15 @@
-import {api} from './axios';
+import { api } from "./axios";
 
-export const getAdminPosts = () => api.get('/posts'); // all posts, admin only
+export const getAdminPosts = () => api.get("/posts");
 
 export const createPost = (data: FormData) =>
-  api.post('/posts', data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  api.post("/posts", data, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
 
 export const updatePost = (id: string, data: FormData) =>
-  api.put(`/posts/${id}`, data, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+  api.patch(`/posts/${id}`, data, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
 
 export const deletePost = (id: string) => api.delete(`/posts/${id}`);

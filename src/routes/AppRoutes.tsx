@@ -3,6 +3,7 @@ import Home from '../pages/HomePage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import AdminDashboard from '../features/admin/AdminDashboard';
+import PostDetail from '../features/posts/PostDetail'; // ✅ ADD THIS
 import ProtectedRoute from './ProtectedRoute';
 
 const AppRoutes = () => {
@@ -12,7 +13,7 @@ const AppRoutes = () => {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Protected Routes (any logged-in user) */}
+      {/* Protected Routes */}
       <Route
         path="/"
         element={
@@ -22,7 +23,17 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Admin-only Routes */}
+      {/* ✅ ADD THIS ROUTE */}
+      <Route
+        path="/posts/:id"
+        element={
+          <ProtectedRoute>
+            <PostDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Admin-only */}
       <Route
         path="/admin"
         element={
@@ -32,8 +43,11 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Fallback / 404 */}
-      <Route path="*" element={<p className="text-center mt-10">Page not found</p>} />
+      {/* 404 */}
+      <Route
+        path="*"
+        element={<p className="text-center mt-10">Page not found</p>}
+      />
     </Routes>
   );
 };
