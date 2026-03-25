@@ -21,7 +21,7 @@ const CommentItem = ({ comment, postId, level = 0 }: CommentItemProps) => {
   const [replying, setReplying] = useState(false);
   const [replyContent, setReplyContent] = useState('');
   const [replyPage, setReplyPage] = useState(1);
-  const [showReplies, setShowReplies] = useState(true);
+  const [showReplies, setShowReplies] = useState(false);
 
   const likedByUser =
     comment.likes?.some((l) => l.userId === user?.id) ?? false;
