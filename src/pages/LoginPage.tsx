@@ -1,114 +1,203 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/authStore';
-import { login, getProfile } from '../api/auth.api';
+import { login } from '../api/auth.api';
 import toast from 'react-hot-toast';
+import { FiMail, FiLock, FiArrowRight, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const setToken = useAuthStore((state) => state.setToken);
   const setUser = useAuthStore((state) => state.setUser);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email) newErrors.email = 'Email is required';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Invalid email format';
-    if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  // --- Frontend Validation Logic ---
+  const validate = (name: string, value: string) => {
+    let error = '';
+    if (name === 'email') {
+      const emailRegex = /\S+@\S+\.\S+/;
+      if (!value) error = 'Email is required';
+      else if (!emailRegex.test(value)) error = 'Please enter a valid email address';
+    }
+    if (name === 'password') {
+      if (!value) error = 'Password is required';
+      else if (value.length < 6) error = 'Password must be at least 6 characters';
+    }
+    setErrors(prev => ({ ...prev, [name]: error }));
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForm(prev => ({ ...prev, [name]: value }));
+    setIsTyping(true);
+    validate(name, value); // Real-time feedback
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    
+    // Final check before submission
+    const emailError = !form.email ? 'Email is required' : errors.email;
+    const passwordError = !form.password ? 'Password is required' : errors.password;
+    
+    if (emailError || passwordError) {
+      setErrors({ email: emailError, password: passwordError });
+      toast.error("Please fix the errors in the form");
+      return;
+    }
 
     try {
       setLoading(true);
-
-      // 1️⃣ Login and get access token
-      const res = await login({ email, password });
-      const token = res.data.access_token;
-      setToken(token);
-
-      // 2️⃣ Fetch user profile
-      const profileRes = await getProfile();
-      const user = profileRes.data;
-      setUser(user);
-
-      toast.success(`Welcome back, ${user.firstName}!`);
-
-      // 3️⃣ Role-based redirect
-      if (user.role === 'ADMIN') {
-        navigate('/admin'); // redirect admin
-      } else {
-        navigate('/'); // normal user
-      }
+      const res = await login(form);
+      setToken(res.data.access_token);
+      setUser(res.data.user);
+      
+      toast.success(`Welcome back, ${res.data.user.firstName}!`);
+      res.data.user.role === 'ADMIN' ? navigate('/admin') : navigate('/');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Login failed');
+      toast.error(err.response?.data?.message || 'Invalid credentials');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 to-blue-200 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        {/* Welcome Section */}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-gray-800">Welcome Back 👋</h1>
-          <p className="text-gray-500 mt-2">Login to continue to your account</p>
+    <div className="min-h-screen flex flex-col md:flex-row bg-white overflow-hidden">
+      
+      {/* LEFT HERO SECTION */}
+      <motion.div 
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="hidden md:flex md:w-1/2 bg-slate-900 p-16 flex-col justify-between text-white relative"
+      >
+        <div className="absolute inset-0 overflow-hidden">
+          <motion.div 
+            animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }}
+            transition={{ duration: 20, repeat: Infinity }}
+            className="absolute -top-24 -left-24 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" 
+          />
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                errors.email ? 'border-red-400 focus:ring-red-300' : 'focus:ring-blue-400'
-              }`}
-            />
-            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-          </div>
+        <div className="relative z-10">
+          <Link to="/" className="text-2xl font-black tracking-tighter flex items-center gap-1">
+            <span className="text-white">Salilu</span>
+            <span className="text-indigo-500 underline decoration-2 underline-offset-4">Blog</span>
+          </Link>
+        </div>
 
-          <div className="mb-6">
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 ${
-                errors.password ? 'border-red-400 focus:ring-red-300' : 'focus:ring-blue-400'
-              }`}
-            />
-            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold disabled:opacity-70"
+        <div className="relative z-10">
+          <motion.span 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            className="inline-block px-3 py-1 rounded-full border border-indigo-500/30 text-indigo-400 text-xs font-bold uppercase tracking-widest mb-6"
           >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-
-        <div className="text-center mt-6">
-          <p className="text-gray-500 text-sm">
-            Don’t have an account?{' '}
-            <Link to="/register" className="text-blue-600 font-semibold hover:underline">
-              Create Account
-            </Link>
+            Exclusive Creator Space
+          </motion.span>
+          <h2 className="text-6xl font-black leading-[1.1] mb-8 tracking-tight">
+            Saleamlak's <br/> <span className="text-indigo-500">Official</span> Journal.
+          </h2>
+          <p className="text-slate-400 text-xl max-w-md leading-relaxed">
+            The only place to read Saleamlak's verified posts and share your thoughts through comments.
           </p>
         </div>
+
+        <div className="relative z-10 flex items-center gap-4 text-xs font-bold text-slate-500 tracking-[0.3em] uppercase">
+          <div className="w-8 h-[1px] bg-slate-700" />
+          Established 2026
+        </div>
+      </motion.div>
+
+      {/* RIGHT LOGIN SECTION */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-slate-50">
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-2xl shadow-slate-200/40 border border-slate-100"
+        >
+          <header className="mb-10">
+            <h1 className="text-4xl font-black text-slate-900 mb-2">Sign In</h1>
+            <p className="text-slate-400 font-medium">Log in to interact with Saleamlak's latest stories.</p>
+          </header>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* EMAIL FIELD */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center ml-1">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                <AnimatePresence>
+                  {form.email && !errors.email && (
+                    <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="text-green-500 text-sm">
+                      <FiCheckCircle />
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+              <div className="relative group">
+                <FiMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="name@email.com"
+                  value={form.email}
+                  onChange={handleChange}
+                  className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 rounded-2xl outline-none transition-all ${
+                    errors.email ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50'
+                  }`}
+                />
+              </div>
+              {errors.email && <p className="text-red-500 text-[10px] font-bold uppercase tracking-tight ml-1">{errors.email}</p>}
+            </div>
+
+            {/* PASSWORD FIELD */}
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
+              <div className="relative group">
+                <FiLock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={handleChange}
+                  className={`w-full pl-12 pr-4 py-4 bg-slate-50 border-2 rounded-2xl outline-none transition-all ${
+                    errors.password ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50'
+                  }`}
+                />
+              </div>
+              {errors.password && <p className="text-red-500 text-[10px] font-bold uppercase tracking-tight ml-1">{errors.password}</p>}
+            </div>
+
+            <motion.button
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={loading}
+              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black shadow-xl shadow-slate-200 flex items-center justify-center gap-3 group disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  Access Blog <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </motion.button>
+          </form>
+
+          <footer className="mt-10 text-center">
+            <p className="text-slate-400 font-medium">
+              New here?{' '}
+              <Link to="/register" className="text-indigo-600 font-black hover:underline underline-offset-4 decoration-2">
+                Create Account
+              </Link>
+            </p>
+          </footer>
+        </motion.div>
       </div>
     </div>
   );
