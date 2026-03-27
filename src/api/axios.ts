@@ -1,14 +1,16 @@
-import axios from 'axios';
-import { getToken } from '../features/auth/authStore';
+import axios from "axios";
+import { getToken } from "../features/auth/authStore";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
 });
 
+// Attach token to every request
 api.interceptors.request.use((config) => {
   const token = getToken();
 
   if (token) {
+    config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
   }
 
