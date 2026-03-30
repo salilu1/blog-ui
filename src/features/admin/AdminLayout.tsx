@@ -22,7 +22,7 @@ const AdminLayout = () => {
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 hidden md:flex flex-col sticky top-0 h-screen">
-        <div className="p-8">
+        {/* <div className="p-8">
           <Link to="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold group-hover:rotate-12 transition-transform">
               B
@@ -31,10 +31,10 @@ const AdminLayout = () => {
               BLOG<span className="text-indigo-600">OS</span>
             </span>
           </Link>
-        </div>
+        </div> */}
 
-        <nav className="flex-1 px-4 space-y-1.5">
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+        <nav className="flex-1 px-4 space-y-1.5 pt-10">
+          <p className="px-4 text-[15px] font-bold text-slate-600 uppercase tracking-widest mb-2">
             Main Menu
           </p>
           {menuItems.map((item) => {
@@ -75,7 +75,7 @@ const AdminLayout = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
+        {/* <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-20">
           <div>
             <h1 className="text-sm font-bold text-slate-400 uppercase tracking-widest">
               Admin Area
@@ -96,7 +96,7 @@ const AdminLayout = () => {
               {user?.firstName?.charAt(0)}
             </div>
           </div>
-        </header>
+        </header> */}
 
         <div className="p-4 md:p-10 max-w-7xl">
           <Outlet /> 
